@@ -1,7 +1,11 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+pub(crate) mod data;
+pub(crate) mod element;
+pub(crate) mod export;
+pub(crate) mod external;
+pub(crate) mod function;
+pub(crate) mod global;
+pub(crate) mod memory;
+pub(crate) mod module;
+pub(crate) mod store;
+pub(crate) mod table;
+pub(crate) mod values;
