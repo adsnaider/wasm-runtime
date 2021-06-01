@@ -11,7 +11,7 @@ pub(crate) struct DataInstance {
 impl Instantiate for Data {
     type Instance = DataInstance;
     fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
-        panic!();
+        unimplemented!();
     }
 }
 

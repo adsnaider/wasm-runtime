@@ -13,7 +13,7 @@ pub(crate) struct GlobalInstance {
 impl Instantiate for Global {
     type Instance = GlobalInstance;
     fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
-        panic!();
+        unimplemented!();
     }
 }
 impl IntoStore for GlobalInstance {

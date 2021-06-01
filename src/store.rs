@@ -3,6 +3,7 @@ use crate::{
     global::GlobalInstance, memory::MemoryInstance, table::TableInstance,
 };
 
+#[derive(Default)]
 pub(crate) struct Store {
     funcs: Vec<FunctionInstance>,
     tables: Vec<TableInstance>,
@@ -29,6 +30,30 @@ pub(crate) trait IntoStore: Sized {
 }
 
 impl Store {
+    pub fn get_func(&self, idx: usize) -> &FunctionInstance {
+        &self.funcs[idx]
+    }
+
+    pub fn get_table(&self, idx: usize) -> &TableInstance {
+        &self.tables[idx]
+    }
+
+    pub fn get_memory(&self, idx: usize) -> &MemoryInstance {
+        &self.mems[idx]
+    }
+
+    pub fn get_global(&self, idx: usize) -> &GlobalInstance {
+        &self.globals[idx]
+    }
+
+    pub fn get_element(&self, idx: usize) -> &ElementInstance {
+        &self.elems[idx]
+    }
+
+    pub fn get_data(&self, idx: usize) -> &DataInstance {
+        &self.datas[idx]
+    }
+
     pub fn push(&mut self, element: StoreElement) -> usize {
         match element {
             StoreElement::Function(f) => {

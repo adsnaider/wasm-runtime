@@ -14,7 +14,7 @@ pub(crate) struct TableInstance {
 impl Instantiate for Table {
     type Instance = TableInstance;
     fn instantiate(&self, manager: &mut RuntimeManager) -> Self::Instance {
-        panic!();
+        unimplemented!();
     }
 }
 

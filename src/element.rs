@@ -13,7 +13,7 @@ pub(crate) struct ElementInstance {
 impl Instantiate for Elem {
     type Instance = ElementInstance;
     fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
-        panic!();
+        unimplemented!();
     }
 }
 impl IntoStore for ElementInstance {

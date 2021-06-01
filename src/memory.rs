@@ -12,7 +12,7 @@ pub(crate) struct MemoryInstance {
 impl Instantiate for Mem {
     type Instance = MemoryInstance;
     fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
-        panic!();
+        unimplemented!();
     }
 }
 impl IntoStore for MemoryInstance {

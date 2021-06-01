@@ -13,6 +13,6 @@ pub(crate) struct ExportInstance {
 impl Instantiate for Export {
     type Instance = ExportInstance;
     fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
-        panic!();
+        unimplemented!();
     }
 }

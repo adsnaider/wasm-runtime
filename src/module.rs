@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use wasm_parse::wasm::module::Module;
 use wasm_parse::wasm::types::FuncType;
 use wasm_parse::wasm::values::Name;
@@ -17,6 +19,7 @@ pub(crate) struct ModuleInstance {
     elemaddrs: Vec<usize>,
     dataaddrs: Vec<usize>,
     exports: Vec<ExportInstance>,
+    start: Option<usize>,
 }
 
 impl Instantiate for Module {
@@ -38,14 +41,19 @@ impl Instantiate for Module {
             }
         }
 
-        let funcaddrs = imported_funcaddrs
-            .into_iter()
-            .chain(
-                self.funcs
-                    .iter()
-                    .map(|x| -> usize { x.instantiate(manager).into_store(manager.mut_store()) }),
-            )
+        let funcaddrs: Vec<usize> = self
+            .funcs
+            .iter()
+            .map(|x| x.instantiate(manager).into_store(manager.mut_store()))
             .collect();
+
+        let mut start = None;
+        if self.start.is_some() {
+            let idx = self.start.borrow().as_ref().unwrap().func.0;
+            start = Some(funcaddrs[*idx as usize])
+        }
+
+        let funcaddrs = imported_funcaddrs.into_iter().chain(funcaddrs).collect();
         let tableaddrs = imported_tableaddrs
             .into_iter()
             .chain(
@@ -95,12 +103,17 @@ impl Instantiate for Module {
             elemaddrs,
             dataaddrs,
             exports,
+            start,
         }
     }
 }
 
 impl ModuleInstance {
     pub fn find_export(&self, name: &Name) -> Result<ExternVal, ()> {
-        panic!();
+        unimplemented!();
+    }
+
+    pub fn start(&self) -> Option<usize> {
+        self.start
     }
 }

@@ -23,13 +23,17 @@ pub(crate) struct ModuleFunction {
 
 impl Instantiate for Func {
     type Instance = FunctionInstance;
-    fn instantiate(&self, manager: &mut RuntimeManager) -> Self::Instance {
-        panic!();
-    }
+    fn instantiate(&self, manager: &mut RuntimeManager) -> Self::Instance {}
 }
 
 impl IntoStore for FunctionInstance {
     fn to_element(self) -> StoreElement {
         StoreElement::Function(self)
+    }
+}
+
+impl FunctionInstance {
+    pub fn execute(&self, manager: &RuntimeManager) {
+        unimplemented!();
     }
 }
