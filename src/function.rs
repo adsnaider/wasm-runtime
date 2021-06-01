@@ -1,29 +1,44 @@
 use wasm_parse::wasm::func::Func;
+use wasm_parse::wasm::module::Module;
 use wasm_parse::wasm::types::FuncType;
 
 use crate::module::ModuleInstance;
-use crate::runtime_manager::RuntimeManager;
+use crate::runtime_manager::{Runtime, RuntimeManager};
 use crate::store::{IntoStore, StoreElement};
-use crate::Instantiate;
 
+#[derive(Clone)]
 pub(crate) struct FunctionInstance {
     tpe: FuncType,
     func: Function,
 }
 
+#[derive(Clone)]
 pub(crate) enum Function {
     ModuleFunction(ModuleFunction),
     HostFunction,
 }
 
+#[derive(Clone)]
 pub(crate) struct ModuleFunction {
-    module: ModuleInstance,
+    module: usize,
     code: Func,
 }
 
-impl Instantiate for Func {
-    type Instance = FunctionInstance;
-    fn instantiate(&self, manager: &mut RuntimeManager) -> Self::Instance {}
+impl FunctionInstance {
+    pub fn instantiate(
+        func: Func,
+        tpe: FuncType,
+        module_id: usize,
+        _manager: &mut RuntimeManager,
+    ) -> FunctionInstance {
+        FunctionInstance {
+            tpe,
+            func: Function::ModuleFunction(ModuleFunction {
+                module: module_id,
+                code: func,
+            }),
+        }
+    }
 }
 
 impl IntoStore for FunctionInstance {
@@ -33,7 +48,7 @@ impl IntoStore for FunctionInstance {
 }
 
 impl FunctionInstance {
-    pub fn execute(&self, manager: &RuntimeManager) {
+    pub fn execute(&self, runtime: &mut Runtime) {
         unimplemented!();
     }
 }

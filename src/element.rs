@@ -4,15 +4,13 @@ use wasm_parse::wasm::types::RefType;
 use crate::runtime_manager::RuntimeManager;
 use crate::store::{IntoStore, StoreElement};
 use crate::values::Ref;
-use crate::Instantiate;
 
 pub(crate) struct ElementInstance {
     tpe: RefType,
     elem: Vec<Ref>,
 }
-impl Instantiate for Elem {
-    type Instance = ElementInstance;
-    fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
+impl ElementInstance {
+    pub fn instantiate(elem: Elem, store: &mut RuntimeManager) -> ElementInstance {
         unimplemented!();
     }
 }

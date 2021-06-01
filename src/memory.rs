@@ -3,15 +3,13 @@ use wasm_parse::wasm::types::MemType;
 
 use crate::runtime_manager::RuntimeManager;
 use crate::store::{IntoStore, StoreElement};
-use crate::Instantiate;
 
 pub(crate) struct MemoryInstance {
     tpe: MemType,
     data: Vec<u8>,
 }
-impl Instantiate for Mem {
-    type Instance = MemoryInstance;
-    fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
+impl MemoryInstance {
+    pub fn instantiate(mem: Mem, store: &mut RuntimeManager) -> MemoryInstance {
         unimplemented!();
     }
 }

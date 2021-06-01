@@ -4,12 +4,18 @@ use wasm_parse::wasm::module::Module;
 use wasm_parse::wasm::types::FuncType;
 use wasm_parse::wasm::values::Name;
 
+use crate::data::DataInstance;
+use crate::element::ElementInstance;
 use crate::export::ExportInstance;
 use crate::external::ExternVal;
+use crate::function::FunctionInstance;
+use crate::global::GlobalInstance;
+use crate::memory::MemoryInstance;
 use crate::runtime_manager::RuntimeManager;
 use crate::store::IntoStore;
-use crate::Instantiate;
+use crate::table::TableInstance;
 
+#[derive(Clone)]
 pub(crate) struct ModuleInstance {
     types: Vec<FuncType>,
     funcaddrs: Vec<usize>,
@@ -22,15 +28,14 @@ pub(crate) struct ModuleInstance {
     start: Option<usize>,
 }
 
-impl Instantiate for Module {
-    type Instance = ModuleInstance;
-    fn instantiate(&self, manager: &mut RuntimeManager) -> Self::Instance {
+impl ModuleInstance {
+    pub fn instantiate(module: Module, id: usize, manager: &mut RuntimeManager) -> ModuleInstance {
         let mut imported_funcaddrs: Vec<usize> = Vec::new();
         let mut imported_tableaddrs = Vec::new();
         let mut imported_memaddrs = Vec::new();
         let mut imported_globaladdrs = Vec::new();
 
-        for import in &self.imports {
+        for import in &module.imports {
             let module = manager.get_or_instantiate_module(&import.module).unwrap();
             let exported = module.find_export(&import.name).unwrap();
             match exported {
@@ -41,61 +46,63 @@ impl Instantiate for Module {
             }
         }
 
-        let funcaddrs: Vec<usize> = self
+        let funcaddrs: Vec<usize> = module
             .funcs
             .iter()
-            .map(|x| x.instantiate(manager).into_store(manager.mut_store()))
+            .map(|x| {
+                FunctionInstance::instantiate(
+                    x.clone(),
+                    module.types[*x.index.0 as usize].clone(),
+                    id,
+                    manager,
+                )
+                .into_store(manager.get_mut_store())
+            })
             .collect();
 
         let mut start = None;
-        if self.start.is_some() {
-            let idx = self.start.borrow().as_ref().unwrap().func.0;
+        if module.start.is_some() {
+            let idx = module.start.borrow().as_ref().unwrap().func.0;
             start = Some(funcaddrs[*idx as usize])
         }
 
         let funcaddrs = imported_funcaddrs.into_iter().chain(funcaddrs).collect();
         let tableaddrs = imported_tableaddrs
             .into_iter()
-            .chain(
-                self.tables
-                    .iter()
-                    .map(|x| x.instantiate(manager).into_store(manager.mut_store())),
-            )
+            .chain(module.tables.into_iter().map(|x| {
+                TableInstance::instantiate(x, manager).into_store(manager.get_mut_store())
+            }))
             .collect();
         let memaddrs = imported_memaddrs
             .into_iter()
-            .chain(
-                self.mems
-                    .iter()
-                    .map(|x| x.instantiate(manager).into_store(manager.mut_store())),
-            )
+            .chain(module.mems.into_iter().map(|x| {
+                MemoryInstance::instantiate(x, manager).into_store(manager.get_mut_store())
+            }))
             .collect();
         let globaladdrs = imported_globaladdrs
             .into_iter()
-            .chain(
-                self.globals
-                    .iter()
-                    .map(|x| x.instantiate(manager).into_store(manager.mut_store())),
-            )
+            .chain(module.globals.into_iter().map(|x| {
+                GlobalInstance::instantiate(x, manager).into_store(manager.get_mut_store())
+            }))
             .collect();
-        let elemaddrs = self
+        let elemaddrs = module
             .elems
-            .iter()
-            .map(|x| x.instantiate(manager).into_store(manager.mut_store()))
+            .into_iter()
+            .map(|x| ElementInstance::instantiate(x, manager).into_store(manager.get_mut_store()))
             .collect();
-        let dataaddrs = self
+        let dataaddrs = module
             .datas
-            .iter()
-            .map(|x| x.instantiate(manager).into_store(manager.mut_store()))
+            .into_iter()
+            .map(|x| DataInstance::instantiate(x, manager).into_store(manager.get_mut_store()))
             .collect();
-        let exports = self
+        let exports = module
             .exports
-            .iter()
-            .map(|x| x.instantiate(manager))
+            .into_iter()
+            .map(|x| ExportInstance::instantiate(x, manager))
             .collect();
 
         ModuleInstance {
-            types: self.types.clone(),
+            types: module.types,
             funcaddrs,
             tableaddrs,
             memaddrs,

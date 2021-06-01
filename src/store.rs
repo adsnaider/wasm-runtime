@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::{
     data::DataInstance, element::ElementInstance, function::FunctionInstance,
     global::GlobalInstance, memory::MemoryInstance, table::TableInstance,
@@ -5,7 +8,9 @@ use crate::{
 
 #[derive(Default)]
 pub(crate) struct Store {
-    funcs: Vec<FunctionInstance>,
+    // Since functions require access to the store, we need to expose some interior mutability to
+    // make the borrow checker happy.
+    funcs: Vec<Rc<RefCell<FunctionInstance>>>,
     tables: Vec<TableInstance>,
     mems: Vec<MemoryInstance>,
     globals: Vec<GlobalInstance>,
@@ -30,8 +35,8 @@ pub(crate) trait IntoStore: Sized {
 }
 
 impl Store {
-    pub fn get_func(&self, idx: usize) -> &FunctionInstance {
-        &self.funcs[idx]
+    pub fn get_func(&self, idx: usize) -> Rc<RefCell<FunctionInstance>> {
+        self.funcs[idx].clone()
     }
 
     pub fn get_table(&self, idx: usize) -> &TableInstance {
@@ -57,7 +62,7 @@ impl Store {
     pub fn push(&mut self, element: StoreElement) -> usize {
         match element {
             StoreElement::Function(f) => {
-                self.funcs.push(f);
+                self.funcs.push(Rc::new(RefCell::new(f)));
                 self.funcs.len() - 1
             }
             StoreElement::Table(t) => {

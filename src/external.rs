@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub(crate) enum ExternVal {
     Func(usize),
     Table(usize),

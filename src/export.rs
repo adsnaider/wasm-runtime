@@ -3,16 +3,18 @@ use wasm_parse::wasm::values::Name;
 
 use crate::external::ExternVal;
 use crate::runtime_manager::RuntimeManager;
-use crate::Instantiate;
 
+#[derive(Clone)]
 pub(crate) struct ExportInstance {
     name: Name,
     value: ExternVal,
 }
 
-impl Instantiate for Export {
-    type Instance = ExportInstance;
-    fn instantiate(&self, store: &mut RuntimeManager) -> Self::Instance {
-        unimplemented!();
+impl ExportInstance {
+    pub fn instantiate(export: Export, store: &mut RuntimeManager) -> ExportInstance {
+        ExportInstance {
+            name: export.name,
+
+        }
     }
 }

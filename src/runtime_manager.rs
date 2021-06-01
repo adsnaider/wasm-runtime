@@ -5,24 +5,36 @@ use wasm_parse::wasm::values::Name;
 
 use crate::module::ModuleInstance;
 use crate::store::Store;
-use crate::Instantiate;
 
 #[derive(Default)]
 pub struct RuntimeManager {
     names: HashMap<String, usize>,
-    module_definitions: Vec<Module>,
-    module_instances: Vec<ModuleInstance>,
+    modules: Vec<Module>,
     start: Option<usize>,
+    store: Option<Store>,
+}
+
+#[derive(Default)]
+pub(crate) struct Runtime {
+    modules: Vec<ModuleInstance>,
     store: Store,
+}
+
+impl Runtime {
+    pub fn get_store(&self) -> &Store {
+        &self.store
+    }
+
+    pub fn get_module(&self, idx: usize) -> &ModuleInstance {
+        &self.modules[idx]
+    }
 }
 
 impl RuntimeManager {
     pub fn new() -> RuntimeManager {
-        Default::default()
-    }
-
-    pub(crate) fn mut_store(&mut self) -> &mut Store {
-        &mut self.store
+        let mut manager = RuntimeManager::default();
+        manager.store = Some(Store::default());
+        manager
     }
 
     pub(crate) fn get_or_instantiate_module(
@@ -32,10 +44,17 @@ impl RuntimeManager {
         unimplemented!()
     }
 
+    pub(crate) fn get_mut_store(&mut self) -> &mut Store {
+        match &mut self.store {
+            Some(s) => s,
+            None => panic!("No store available"),
+        }
+    }
+
     pub fn load_modules(&mut self, modules: Vec<Module>) {
-        self.module_definitions.extend(modules.into_iter());
+        self.modules.extend(modules.into_iter());
         let named_modules = self
-            .module_definitions
+            .modules
             .iter()
             .enumerate()
             .filter(|(_, module)| module.name.is_some());
@@ -48,14 +67,17 @@ impl RuntimeManager {
     }
 
     pub fn start(&mut self) {
-        for module in std::mem::take(&mut self.module_definitions) {
-            let instance = module.instantiate(self);
+        let mut runtime = Runtime::default();
+        for (id, module) in std::mem::take(&mut self.modules).into_iter().enumerate() {
+            let instance = ModuleInstance::instantiate(module, id, self);
             self.start.or(instance.start());
-            self.module_instances.push(instance);
+            runtime.modules.push(instance);
         }
 
         match self.start {
-            Some(s) => self.store.get_func(s).execute(self),
+            Some(s) => {
+                runtime.store.get_func(s).borrow().execute(&mut runtime);
+            }
             None => panic!("Can't start web assembly. No start function."),
         }
     }
