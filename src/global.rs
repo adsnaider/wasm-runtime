@@ -1,8 +1,7 @@
 use wasm_parse::wasm::global::Global;
 use wasm_parse::wasm::types::GlobalType;
 
-use crate::runtime_manager::RuntimeManager;
-use crate::store::{IntoStore, StoreElement};
+use crate::runtime_manager::Loader;
 use crate::values::Val;
 
 pub(crate) struct GlobalInstance {
@@ -11,12 +10,7 @@ pub(crate) struct GlobalInstance {
 }
 
 impl GlobalInstance {
-    pub fn instantiate(global: Global, store: &mut RuntimeManager) -> GlobalInstance {
+    pub fn instantiate(global: Global, store: &mut Loader) -> GlobalInstance {
         unimplemented!();
-    }
-}
-impl IntoStore for GlobalInstance {
-    fn to_element(self) -> StoreElement {
-        StoreElement::Global(self)
     }
 }

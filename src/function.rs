@@ -3,8 +3,8 @@ use wasm_parse::wasm::module::Module;
 use wasm_parse::wasm::types::FuncType;
 
 use crate::module::ModuleInstance;
-use crate::runtime_manager::{Runtime, RuntimeManager};
-use crate::store::{IntoStore, StoreElement};
+use crate::runtime_manager::{Loader, ModuleIdx};
+use crate::store::Store;
 
 #[derive(Clone)]
 pub(crate) struct FunctionInstance {
@@ -25,12 +25,7 @@ pub(crate) struct ModuleFunction {
 }
 
 impl FunctionInstance {
-    pub fn instantiate(
-        func: Func,
-        tpe: FuncType,
-        module_id: usize,
-        _manager: &mut RuntimeManager,
-    ) -> FunctionInstance {
+    pub fn instantiate(func: Func, module: ModuleIdx, loader: &mut Store, ) -> FunctionInstance {
         FunctionInstance {
             tpe,
             func: Function::ModuleFunction(ModuleFunction {
@@ -38,17 +33,6 @@ impl FunctionInstance {
                 code: func,
             }),
         }
-    }
-}
-
-impl IntoStore for FunctionInstance {
-    fn to_element(self) -> StoreElement {
-        StoreElement::Function(self)
-    }
-}
-
-impl FunctionInstance {
-    pub fn execute(&self, runtime: &mut Runtime) {
         unimplemented!();
     }
 }

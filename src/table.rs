@@ -1,8 +1,7 @@
 use wasm_parse::wasm::table::Table;
 use wasm_parse::wasm::types::TableType;
 
-use crate::runtime_manager::RuntimeManager;
-use crate::store::{IntoStore, StoreElement};
+use crate::runtime_manager::Loader;
 use crate::values::Ref;
 
 pub(crate) struct TableInstance {
@@ -11,13 +10,7 @@ pub(crate) struct TableInstance {
 }
 
 impl TableInstance {
-    pub fn instantiate(table: Table, manager: &mut RuntimeManager) -> TableInstance {
+    pub fn instantiate(table: Table, manager: &mut Loader) -> TableInstance {
         unimplemented!();
-    }
-}
-
-impl IntoStore for TableInstance {
-    fn to_element(self) -> StoreElement {
-        StoreElement::Table(self)
     }
 }

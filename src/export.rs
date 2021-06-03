@@ -2,7 +2,7 @@ use wasm_parse::wasm::export::Export;
 use wasm_parse::wasm::values::Name;
 
 use crate::external::ExternVal;
-use crate::runtime_manager::RuntimeManager;
+use crate::runtime_manager::Loader;
 
 #[derive(Clone)]
 pub(crate) struct ExportInstance {
@@ -11,10 +11,10 @@ pub(crate) struct ExportInstance {
 }
 
 impl ExportInstance {
-    pub fn instantiate(export: Export, store: &mut RuntimeManager) -> ExportInstance {
-        ExportInstance {
-            name: export.name,
-
-        }
+    pub fn instantiate(export: Export, store: &mut Loader) -> ExportInstance {
+        unimplemented!();
+        /*
+        ExportInstance { name: export.name }
+        */
     }
 }

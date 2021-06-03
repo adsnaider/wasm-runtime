@@ -1,6 +1,7 @@
+use wasm_parse::wasm::instr::Instr;
+
 use crate::module::ModuleInstance;
 use crate::values::Val;
-use wasm_parse::wasm::instr::Instr;
 
 pub(crate) struct RuntimeStack {
     stack: Vec<StackElement>,
