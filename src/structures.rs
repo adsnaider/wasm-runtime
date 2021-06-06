@@ -1,11 +1,14 @@
 pub mod stack;
 
 use stack::Stack;
+use wasm_parse::wasm::indices::FuncIdx;
 use wasm_parse::wasm::instr::Instr;
 use wasm_parse::wasm::module::Module;
+use wasm_parse::wasm::types::{NumType, RefType, ValType};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Val {
+    Empty,
     I32(u32),
     I64(u64),
     F32(f32),
@@ -33,8 +36,8 @@ pub enum ExecutionResult {
     BranchTo(Label),
 }
 
-impl Frame<'_> {
-    pub fn new<'a>(module: &'a Module, body: &'a Vec<Instr>, locals: Vec<Val>) -> Frame<'a> {
+impl<'a> Frame<'a> {
+    pub fn new(module: &'a Module, body: &'a Vec<Instr>, locals: Vec<Val>) -> Frame<'a> {
         Frame {
             module,
             body,
@@ -43,6 +46,30 @@ impl Frame<'_> {
             lpc: 0,
             stack: Stack::default(),
         }
+    }
+
+    pub fn from_index(module: &'a Module, idx: FuncIdx, args: Vec<Val>) -> Frame<'a> {
+        let func = &module.funcs[*idx.0 as usize];
+        let mut locals = Vec::new();
+        locals.reserve(func.locals.len());
+        for local in &func.locals {
+            locals.push(match local {
+                ValType::Num(NumType::I32) => Val::I32(0),
+                ValType::Num(NumType::I64) => Val::I64(0),
+                ValType::Num(NumType::F32) => Val::F32(0.0),
+                ValType::Num(NumType::F64) => Val::F64(0.0),
+                ValType::Ref(_) => Val::Ref(None),
+            })
+        }
+        Frame::new(
+            module,
+            &func.body.instr,
+            args.into_iter().chain(locals).collect(),
+        )
+    }
+
+    pub fn get_module(&self) -> &'a Module {
+        &self.module
     }
 
     pub fn execute(mut self) -> Vec<Val> {
@@ -62,6 +89,10 @@ impl Frame<'_> {
 
     pub fn pop_value(&mut self) -> Result<Val, stack::StackError> {
         self.stack.pop()
+    }
+
+    pub fn extend_value<T: IntoIterator<Item = Val>>(&mut self, values: T) {
+        self.stack.extend(values);
     }
 
     pub fn push_label(&mut self, label: Label) {

@@ -9,6 +9,6 @@ fn main() {
     let module = Module::from_binary(std::fs::read(filename).expect("Can't read wasm file."));
     println!(
         "Execution of wasm returned: {:?}",
-        execute_module(&module, &[])
+        execute_module(&module, Vec::new())
     );
 }
