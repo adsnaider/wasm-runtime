@@ -6,35 +6,24 @@
 //!   jumping.
 //!   * Wasm output is returned.
 
+//mod func;
+mod instr;
+
+pub(crate) mod structures;
+
 use wasm_parse::wasm::module::Module;
 
-mod func;
-mod instr;
-pub(crate) mod stack;
-
-#[derive(Copy, Clone, Debug)]
-pub enum Val {
-    I32(u32),
-    I64(u64),
-    F32(f32),
-    F64(f64),
-}
-
-pub struct Context<'a> {
-    pub module: &'a Module,
-}
-
-trait Execute {
-    fn execute(&self, stack: &mut Vec<Val>, context: &Context);
-}
+use crate::structures::{Frame, Val};
 
 pub fn execute_module(module: &Module, inputs: &[Val]) -> Vec<Val> {
-    assert!(module.start.is_some(), "Module must have a start function");
-    let context = Context { module };
-    let mut stack = Vec::new();
-    stack.extend(inputs);
-    module.funcs[*module.start.as_ref().unwrap().func.0 as usize].execute(&mut stack, &context);
-    stack
+    let func = &module.funcs[*module
+        .start
+        .as_ref()
+        .expect("Module must have start function!")
+        .func
+        .0 as usize];
+    let frame = Frame::new(module, &func.body.instr, inputs.to_owned());
+    frame.execute()
 }
 
 #[cfg(test)]
