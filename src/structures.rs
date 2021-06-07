@@ -36,6 +36,7 @@ pub struct Executor<'a> {
 struct Label {
     lpc: Option<usize>,
     stack_height: usize,
+    arity: usize,
 }
 
 pub enum ExecutionResult {
@@ -119,6 +120,10 @@ impl<'a> Frame<'a> {
     pub fn set_local(&mut self, idx: LocalIdx, value: Val) {
         self.locals[*idx.0 as usize] = value;
     }
+
+    pub fn pop_n(&mut self, n: usize) -> Vec<Val> {
+        self.stack.pop_n(n)
+    }
 }
 
 pub enum LabelPos {
@@ -159,13 +164,21 @@ impl<'a> Executor<'a> {
                         )));
                     }
                     let length = self.labels.len();
-                    self.labels = self.labels.into_iter().take(length - label).collect();
+                    self.labels.truncate(length - label);
                     let l = self.labels.last().unwrap();
+                    // TODO: Get arity from label and get them from stack.
+                    let values = self.frame.borrow_mut().as_mut().unwrap().pop_n(l.arity);
+                    //let values = self.frame.borrow_mut().as_mut().unwrap().
                     self.frame
                         .borrow_mut()
                         .as_mut()
                         .unwrap()
                         .truncate_stack(l.stack_height);
+                    self.frame
+                        .borrow_mut()
+                        .as_mut()
+                        .unwrap()
+                        .extend_value(values);
                     match l.lpc {
                         Some(lpc) => lpc,
                         None => return ExecutionResult::Continue,
@@ -196,13 +209,15 @@ impl<'a> Executor<'a> {
         self.frame.borrow().as_ref().unwrap().get_module()
     }
 
-    pub fn push_label(&mut self, l: LabelPos) {
+    pub fn push_label(&mut self, l: LabelPos, arity: usize) {
         match l {
             LabelPos::BlockStart => self.labels.push(Label {
+                arity,
                 lpc: Some(self.lpc),
                 stack_height: self.frame.borrow().as_ref().unwrap().stack_len(),
             }),
             LabelPos::BlockEnd => self.labels.push(Label {
+                arity,
                 lpc: None,
                 stack_height: self.frame.borrow().as_ref().unwrap().stack_len(),
             }),

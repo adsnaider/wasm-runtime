@@ -32,6 +32,10 @@ impl Stack {
     pub fn truncate(&mut self, length: usize) {
         self.data.truncate(length);
     }
+
+    pub fn pop_n(&mut self, n: usize) -> Vec<Val> {
+        self.data.split_off(self.len() - n)
+    }
 }
 
 impl Extend<Val> for Stack {

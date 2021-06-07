@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use wasm_parse::wasm::indices::FuncIdx;
+use wasm_parse::wasm::instr::BlockType;
 use wasm_parse::wasm::instr::ControlInstr;
 use wasm_parse::wasm::types::{NumType, RefType, ValType};
 
@@ -16,21 +17,46 @@ impl Execute for ControlInstr {
             ControlInstr::Unreachable => ExecutionResult::Trap,
             ControlInstr::Block(x) => {
                 let mut executor = executor.replicate(&x.instr);
-                executor.push_label(LabelPos::BlockEnd);
+                let arity = match x.tpe {
+                    BlockType::Val(_) => 1,
+                    BlockType::Empty => 0,
+                    BlockType::Type(t) => executor.get_module().types[*t.0 as usize]
+                        .result
+                        .types
+                        .len(),
+                };
+                executor.push_label(LabelPos::BlockEnd, arity);
                 executor.execute()
             }
             ControlInstr::Loop(x) => {
                 let mut executor = executor.replicate(&x.instr);
-                executor.push_label(LabelPos::BlockStart);
+                let arity = match x.tpe {
+                    BlockType::Val(_) => 1,
+                    BlockType::Empty => 0,
+                    BlockType::Type(t) => executor.get_module().types[*t.0 as usize]
+                        .result
+                        .types
+                        .len(),
+                };
+                executor.push_label(LabelPos::BlockStart, arity);
                 executor.execute()
             }
             ControlInstr::If(x) => {
+                let arity = match x.tpe {
+                    BlockType::Val(_) => 1,
+                    BlockType::Empty => 0,
+                    BlockType::Type(t) => executor.get_module().types[*t.0 as usize]
+                        .result
+                        .types
+                        .len(),
+                };
+
                 let cond = safe_pop!(executor, Val::I32);
                 let mut executor = match cond {
                     0 => executor.replicate(&x.else_br),
                     _ => executor.replicate(&x.if_br),
                 };
-                executor.push_label(LabelPos::BlockEnd);
+                executor.push_label(LabelPos::BlockEnd, arity);
                 executor.execute()
             }
             ControlInstr::Branch(l) => ExecutionResult::BranchTo(*l),
