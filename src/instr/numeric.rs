@@ -3,7 +3,6 @@ use wasm_parse::wasm::instr::{
 };
 
 use crate::safe_pop;
-use crate::structures::stack::Stack;
 use crate::structures::{Execute, ExecutionResult, Frame, Val};
 
 impl Execute for NumericInstr {
