@@ -1,10 +1,14 @@
 pub mod stack;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use stack::Stack;
-use wasm_parse::wasm::indices::FuncIdx;
+use wasm_parse::wasm::indices::{FuncIdx, LabelIdx};
 use wasm_parse::wasm::instr::Instr;
 use wasm_parse::wasm::module::Module;
-use wasm_parse::wasm::types::{NumType, RefType, ValType};
+use wasm_parse::wasm::types::{NumType, ValType};
+use wasm_parse::wasm::values::U32;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Val {
@@ -16,39 +20,51 @@ pub enum Val {
     Ref(Option<u32>),
 }
 
-#[derive(Clone)]
-pub struct Label {
-    pub branch: usize,
-}
-
 pub struct Frame<'a> {
     module: &'a Module,
     locals: Vec<Val>,
-    labels: Vec<Label>,
-    lpc: usize,
     stack: Stack,
+}
+
+pub struct Executor<'a> {
+    frame: Rc<RefCell<Option<Frame<'a>>>>,
+    lpc: usize,
+    labels: Vec<Label>,
     body: &'a Vec<Instr>,
+}
+
+struct Label {
+    lpc: Option<usize>,
+    stack_height: usize,
 }
 
 pub enum ExecutionResult {
     Continue,
+    Return,
+    BranchTo(LabelIdx),
     Trap,
-    BranchTo(Label),
 }
 
 impl<'a> Frame<'a> {
-    pub fn new(module: &'a Module, body: &'a Vec<Instr>, locals: Vec<Val>) -> Frame<'a> {
-        Frame {
+    pub fn new_frame_exec(
+        module: &'a Module,
+        body: &'a Vec<Instr>,
+        locals: Vec<Val>,
+    ) -> (Rc<RefCell<Option<Frame<'a>>>>, Executor<'a>) {
+        let frame = Rc::new(RefCell::new(Some(Frame {
             module,
-            body,
             locals,
-            labels: vec![Label { branch: 0 }],
-            lpc: 0,
             stack: Stack::default(),
-        }
+        })));
+        let executor = Executor::new(Rc::clone(&frame), body);
+        (frame, executor)
     }
 
-    pub fn from_index(module: &'a Module, idx: FuncIdx, args: Vec<Val>) -> Frame<'a> {
+    pub fn from_index(
+        module: &'a Module,
+        idx: FuncIdx,
+        args: Vec<Val>,
+    ) -> (Rc<RefCell<Option<Frame<'a>>>>, Executor<'a>) {
         let func = &module.funcs[*idx.0 as usize];
         let mut locals = Vec::new();
         locals.reserve(func.locals.len());
@@ -61,7 +77,7 @@ impl<'a> Frame<'a> {
                 ValType::Ref(_) => Val::Ref(None),
             })
         }
-        Frame::new(
+        Frame::new_frame_exec(
             module,
             &func.body.instr,
             args.into_iter().chain(locals).collect(),
@@ -70,17 +86,6 @@ impl<'a> Frame<'a> {
 
     pub fn get_module(&self) -> &'a Module {
         &self.module
-    }
-
-    pub fn execute(mut self) -> Vec<Val> {
-        while self.lpc < self.body.len() {
-            self.lpc = match self.body[self.lpc].execute(&mut self) {
-                ExecutionResult::Continue => self.lpc + 1,
-                ExecutionResult::Trap => panic!("Received trap!"),
-                ExecutionResult::BranchTo(label) => label.branch,
-            }
-        }
-        self.stack.take()
     }
 
     pub fn push_value(&mut self, value: Val) {
@@ -95,13 +100,110 @@ impl<'a> Frame<'a> {
         self.stack.extend(values);
     }
 
-    pub fn push_label(&mut self, label: Label) {
-        self.labels.push(label);
+    pub fn take(self) -> Vec<Val> {
+        self.stack.take()
+    }
+
+    fn truncate_stack(&mut self, length: usize) {
+        self.stack.truncate(length)
+    }
+
+    fn stack_len(&self) -> usize {
+        self.stack.len()
+    }
+}
+
+pub enum LabelPos {
+    BlockStart,
+    BlockEnd,
+}
+
+impl<'a> Executor<'a> {
+    pub fn new(frame: Rc<RefCell<Option<Frame<'a>>>>, body: &'a Vec<Instr>) -> Executor<'a> {
+        Executor {
+            frame,
+            body,
+            lpc: 0,
+            labels: Vec::new(),
+        }
+    }
+
+    pub fn replicate(&self, body: &'a Vec<Instr>) -> Executor<'a> {
+        Executor {
+            frame: Rc::clone(&self.frame),
+            body,
+            lpc: 0,
+            labels: Vec::new(),
+        }
+    }
+
+    pub fn execute(mut self) -> ExecutionResult {
+        while self.lpc < self.body.len() {
+            self.lpc = match self.body[self.lpc].execute(&mut self) {
+                ExecutionResult::Continue => self.lpc + 1,
+                ExecutionResult::Return => return ExecutionResult::Return,
+                ExecutionResult::Trap => panic!("Received trap!"),
+                ExecutionResult::BranchTo(label) => {
+                    let label = *label.0 as usize;
+                    if label as usize >= self.labels.len() {
+                        return ExecutionResult::BranchTo(LabelIdx(U32(
+                            (label - self.labels.len()) as u32,
+                        )));
+                    }
+                    let length = self.labels.len();
+                    self.labels = self.labels.into_iter().take(length - label).collect();
+                    let l = self.labels.last().unwrap();
+                    self.frame
+                        .borrow_mut()
+                        .as_mut()
+                        .unwrap()
+                        .truncate_stack(l.stack_height);
+                    match l.lpc {
+                        Some(lpc) => lpc,
+                        None => return ExecutionResult::Continue,
+                    }
+                }
+            }
+        }
+        ExecutionResult::Continue
+    }
+
+    pub fn push_value(&mut self, value: Val) {
+        self.frame.borrow_mut().as_mut().unwrap().push_value(value);
+    }
+
+    pub fn pop_value(&mut self) -> Result<Val, stack::StackError> {
+        self.frame.borrow_mut().as_mut().unwrap().stack.pop()
+    }
+
+    pub fn extend_value<T: IntoIterator<Item = Val>>(&mut self, values: T) {
+        self.frame
+            .borrow_mut()
+            .as_mut()
+            .unwrap()
+            .extend_value(values);
+    }
+
+    pub fn get_module(&self) -> &'a Module {
+        self.frame.borrow().as_ref().unwrap().get_module()
+    }
+
+    pub fn push_label(&mut self, l: LabelPos) {
+        match l {
+            LabelPos::BlockStart => self.labels.push(Label {
+                lpc: Some(self.lpc),
+                stack_height: self.frame.borrow().as_ref().unwrap().stack_len(),
+            }),
+            LabelPos::BlockEnd => self.labels.push(Label {
+                lpc: None,
+                stack_height: self.frame.borrow().as_ref().unwrap().stack_len(),
+            }),
+        }
     }
 }
 
 pub trait Execute {
-    fn execute<'a>(&'a self, frame: &mut Frame<'a>) -> ExecutionResult;
+    fn execute<'a>(&'a self, executor: &mut Executor<'a>) -> ExecutionResult;
 }
 
 #[macro_export]

@@ -28,6 +28,10 @@ impl Stack {
     pub fn take(self) -> Vec<Val> {
         self.data
     }
+
+    pub fn truncate(&mut self, length: usize) {
+        self.data.truncate(length);
+    }
 }
 
 impl Extend<Val> for Stack {

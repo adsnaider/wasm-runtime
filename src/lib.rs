@@ -10,12 +10,14 @@ mod instr;
 
 pub(crate) mod structures;
 
+use std::rc::Rc;
+
 use wasm_parse::wasm::module::Module;
 
 use crate::structures::{Frame, Val};
 
 pub fn execute_module(module: &Module, inputs: Vec<Val>) -> Vec<Val> {
-    let frame = Frame::from_index(
+    let (frame, executor) = Frame::from_index(
         module,
         module
             .start
@@ -24,7 +26,11 @@ pub fn execute_module(module: &Module, inputs: Vec<Val>) -> Vec<Val> {
             .func,
         inputs,
     );
-    frame.execute()
+    executor.execute();
+    match Rc::try_unwrap(frame) {
+        Ok(frame) => frame.take().unwrap().take(),
+        Err(_) => panic!("Couldn't retreive function frame"),
+    }
 }
 
 #[cfg(test)]
