@@ -12,11 +12,19 @@ pub(crate) mod structures;
 
 use std::rc::Rc;
 
+pub use structures::Val;
+use wasm_parse::wasm::export::ExportDesc;
 use wasm_parse::wasm::module::Module;
 
-use crate::structures::{Frame, Val};
+use crate::structures::{ExecutionResult, Frame};
 
-pub fn execute_module(module: &Module, inputs: Vec<Val>) -> Vec<Val> {
+#[derive(Debug)]
+pub enum RuntimeError {
+    Trap,
+    UnknownRuntimeError,
+}
+
+pub fn execute_module(module: &Module, inputs: Vec<Val>) -> Result<Vec<Val>, RuntimeError> {
     let (frame, executor) = Frame::from_index(
         module,
         module
@@ -26,17 +34,40 @@ pub fn execute_module(module: &Module, inputs: Vec<Val>) -> Vec<Val> {
             .func,
         inputs,
     );
-    executor.execute();
+    match executor.execute() {
+        ExecutionResult::Continue | ExecutionResult::Return => {}
+        ExecutionResult::Trap => return Err(RuntimeError::Trap),
+        ExecutionResult::BranchTo(_) => return Err(RuntimeError::UnknownRuntimeError),
+    }
     match Rc::try_unwrap(frame) {
-        Ok(frame) => frame.take().unwrap().take(),
+        Ok(frame) => Ok(frame.take().unwrap().take()),
         Err(_) => panic!("Couldn't retreive function frame"),
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+pub fn execute_function(
+    module: &Module,
+    name: &str,
+    inputs: Vec<Val>,
+) -> Result<Vec<Val>, RuntimeError> {
+    let mut func = None;
+    for export in &module.exports {
+        if export.name.name == name {
+            match export.desc {
+                ExportDesc::Func(idx) => func = Some(idx),
+                _ => panic!("Function export should have function type."),
+            }
+        }
+    }
+    let func = func.expect(&format!("No function with name: {}", name));
+    let (frame, executor) = Frame::from_index(module, func, inputs);
+    match executor.execute() {
+        ExecutionResult::Continue | ExecutionResult::Return => {}
+        ExecutionResult::Trap => return Err(RuntimeError::Trap),
+        ExecutionResult::BranchTo(_) => return Err(RuntimeError::UnknownRuntimeError),
+    }
+    match Rc::try_unwrap(frame) {
+        Ok(frame) => Ok(frame.take().unwrap().take()),
+        Err(_) => panic!("Couldn't retreive function frame"),
     }
 }

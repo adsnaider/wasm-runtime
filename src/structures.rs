@@ -4,13 +4,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use stack::Stack;
-use wasm_parse::wasm::indices::{FuncIdx, LabelIdx};
+use wasm_parse::wasm::indices::{FuncIdx, LabelIdx, LocalIdx};
 use wasm_parse::wasm::instr::Instr;
 use wasm_parse::wasm::module::Module;
 use wasm_parse::wasm::types::{NumType, ValType};
 use wasm_parse::wasm::values::U32;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Val {
     Empty,
     I32(u32),
@@ -111,6 +111,14 @@ impl<'a> Frame<'a> {
     fn stack_len(&self) -> usize {
         self.stack.len()
     }
+
+    pub fn get_local(&self, idx: LocalIdx) -> Val {
+        self.locals[*idx.0 as usize]
+    }
+
+    pub fn set_local(&mut self, idx: LocalIdx, value: Val) {
+        self.locals[*idx.0 as usize] = value;
+    }
 }
 
 pub enum LabelPos {
@@ -142,7 +150,7 @@ impl<'a> Executor<'a> {
             self.lpc = match self.body[self.lpc].execute(&mut self) {
                 ExecutionResult::Continue => self.lpc + 1,
                 ExecutionResult::Return => return ExecutionResult::Return,
-                ExecutionResult::Trap => panic!("Received trap!"),
+                ExecutionResult::Trap => return ExecutionResult::Trap,
                 ExecutionResult::BranchTo(label) => {
                     let label = *label.0 as usize;
                     if label as usize >= self.labels.len() {
@@ -173,7 +181,7 @@ impl<'a> Executor<'a> {
     }
 
     pub fn pop_value(&mut self) -> Result<Val, stack::StackError> {
-        self.frame.borrow_mut().as_mut().unwrap().stack.pop()
+        self.frame.borrow_mut().as_mut().unwrap().pop_value()
     }
 
     pub fn extend_value<T: IntoIterator<Item = Val>>(&mut self, values: T) {
@@ -199,6 +207,18 @@ impl<'a> Executor<'a> {
                 stack_height: self.frame.borrow().as_ref().unwrap().stack_len(),
             }),
         }
+    }
+
+    pub fn get_local(&self, idx: LocalIdx) -> Val {
+        self.frame.borrow().as_ref().unwrap().get_local(idx)
+    }
+
+    pub fn set_local(&mut self, idx: LocalIdx, value: Val) {
+        self.frame
+            .borrow_mut()
+            .as_mut()
+            .unwrap()
+            .set_local(idx, value);
     }
 }
 

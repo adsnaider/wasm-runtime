@@ -1,14 +1,13 @@
 use wasm_parse::wasm::module::Module;
-use wasm_runtime::execute_module;
+use wasm_runtime::execute_function;
+use wasm_runtime::Val;
 
 fn main() {
-    let filename: String = std::env::args()
-        .skip(1)
-        .next()
-        .expect("Missing wasm filename to execute.");
-    let module = Module::from_binary(std::fs::read(filename).expect("Can't read wasm file."));
+    let args: Vec<String> = std::env::args().skip(1).take(2).collect();
+    println!("Func to execute: {}", args[1]);
+    let module = Module::from_binary(std::fs::read(&args[0]).expect("Can't read wasm file."));
     println!(
         "Execution of wasm returned: {:?}",
-        execute_module(&module, Vec::new())
+        execute_function(&module, &args[1], vec![Val::I32(3), Val::I32(2)])
     );
 }
