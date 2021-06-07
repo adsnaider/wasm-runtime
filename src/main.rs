@@ -1,12 +1,13 @@
-use std::fs;
-
 use wasm_parse::wasm::module::Module;
-use wasm_runtime::runtime_manager::{Loader, Runtime};
+use wasm_runtime::execute_function;
+use wasm_runtime::Val;
 
 fn main() {
-    let data = fs::read("../../wasm-examples/add.wasm").unwrap();
-    let module = Module::from_binary(data);
-    println!("Got module {:#?}", module);
-    let mut loader = Loader::new(module);
-    let runtime = loader.instantiate();
+    let args: Vec<String> = std::env::args().skip(1).take(2).collect();
+    println!("Func to execute: {}", args[1]);
+    let module = Module::from_binary(std::fs::read(&args[0]).expect("Can't read wasm file."));
+    println!(
+        "Execution of wasm returned: {:?}",
+        execute_function(&module, &args[1], vec![Val::I32(3), Val::I32(2)])
+    );
 }
