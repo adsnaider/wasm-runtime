@@ -1,0 +1,3 @@
+[submodule "wasm-parse"]
+	path = third_party/wasm-parse
+	url = git@github.com:adsnaider/wasm-parse.git
