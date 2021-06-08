@@ -8,6 +8,6 @@ fn main() {
     let module = Module::from_binary(std::fs::read(&args[0]).expect("Can't read wasm file."));
     println!(
         "Execution of wasm returned: {:?}",
-        execute_function(&module, &args[1], vec![Val::I32(3), Val::I32(2)])
+        execute_function(&module, &args[1], vec![Val::I32(15)])
     );
 }

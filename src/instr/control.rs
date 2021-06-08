@@ -102,7 +102,6 @@ fn generate_function_frame<'a>(
         let val = executor
             .pop_value()
             .expect("Validation error! Not enough arguments for function.");
-        println!("Index: {}", idx);
         match (param, val) {
             (ValType::Num(NumType::I32), Val::I32(_)) => {}
             (ValType::Num(NumType::I64), Val::I64(_)) => {}
