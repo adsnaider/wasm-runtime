@@ -10,6 +10,8 @@
 ## Requirements
 
 * [Rust/Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) installed.
+* This repo. Clone with `--recursive` argument to get the necessary
+  dependencies.
 
 ## Usage
 
